@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Hurricane '26">
+    <title>Hurricane 2026 Packliste</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="icon" type="image/png" href="icon-192.png">
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+        .animate-slide-up { animation: slideUp 0.3s ease-out; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        const Icon = ({ name, className = "w-5 h-5" }) => {
+            const icons = {
+                tent: <path d="M3.5 21 12 3l8.5 18M9 21l3-6 3 6M2 21h20" />,
+                shirt: <path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.62 1.96V10a2 2 0 0 0 2 2h2V22a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V12h2a2 2 0 0 0 2-2V5.42a2 2 0 0 0-1.62-1.96Z" />,
+                utensils: <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2M7 2v20M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7" />,
+                sparkles: <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />,
+                wrench: <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76Z" />,
+                ticket: <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v2Z" />,
+                check: <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14M22 4L12 14.01l-3-3" />,
+                circle: <circle cx="12" cy="12" r="10" />,
+                plus: <path d="M12 5v14M5 12h14" />,
+                trash: <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />,
+                share: <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13" />,
+                refresh: <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16M3 21v-5h5" />
+            };
+            return (
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                    {icons[name] || null}
+                </svg>
+            );
+        };
+
+        const INITIAL_DATA = [
+            { id: 'camping', title: 'Camping', icon: 'tent', items: [
+                { id: 'c1', text: 'Zelt (inkl. Gestänge)', completed: false },
+                { id: 'c2', text: 'Heringe & Gummihammer', completed: false },
+                { id: 'c3', text: 'Pavillon', completed: false },
+                { id: 'c4', text: 'Luftmatratze & Pumpe', completed: false },
+                { id: 'c5', text: 'Schlafsack & Kissen', completed: false },
+                { id: 'c6', text: 'Campingstühle & Tisch', completed: false },
+                { id: 'c7', text: 'Beleuchtung (Stirnlampe)', completed: false }
+            ]},
+            { id: 'clothing', title: 'Kleidung', icon: 'shirt', items: [
+                { id: 'cl1', text: 'Gummistiefel', completed: false },
+                { id: 'cl2', text: 'Sneaker', completed: false },
+                { id: 'cl3', text: 'Regenjacke/Poncho', completed: false },
+                { id: 'cl4', text: 'Warmer Hoodie für nachts', completed: false },
+                { id: 'cl5', text: 'Socken & Unterwäsche', completed: false },
+                { id: 'cl6', text: 'Cap & Sonnenbrille', completed: false }
+            ]},
+            { id: 'food', title: 'Essen', icon: 'utensils', items: [
+                { id: 'f1', text: 'Kühlbox', completed: false },
+                { id: 'f2', text: 'Gaskocher & Kartuschen', completed: false },
+                { id: 'f3', text: 'Camping-Geschirr', completed: false },
+                { id: 'f4', text: 'Wasserkanister', completed: false },
+                { id: 'f5', text: 'Dosenravioli & Brot', completed: false },
+                { id: 'f6', text: 'Getränke (Dosen/Plastik)', completed: false }
+            ]},
+            { id: 'hygiene', title: 'Hygiene', icon: 'sparkles', items: [
+                { id: 'h1', text: 'Toilettenpapier', completed: false },
+                { id: 'h2', text: 'Feuchttücher', completed: false },
+                { id: 'h3', text: 'Sonnencreme', completed: false },
+                { id: 'h4', text: 'Zahnbürste & Zahnpasta', completed: false },
+                { id: 'h5', text: 'Duschgel', completed: false },
+                { id: 'h6', text: 'Pflaster & Ibuprofen', completed: false },
+                { id: 'h7', text: 'Ohrstöpsel', completed: false }
+            ]},
+            { id: 'tools', title: 'Gadgets', icon: 'wrench', items: [
+                { id: 't1', text: 'Panzertape', completed: false },
+                { id: 't2', text: 'Kabelbinder', completed: false },
+                { id: 't3', text: 'Powerbank & Ladekabel', completed: false },
+                { id: 't4', text: 'Bollerwagen', completed: false },
+                { id: 't5', text: 'Müllsäcke', completed: false }
+            ]},
+            { id: 'docs', title: 'Tickets', icon: 'ticket', items: [
+                { id: 'd1', text: 'Festival-Ticket', completed: false },
+                { id: 'd2', text: 'Parkticket', completed: false },
+                { id: 'd3', text: 'Ausweis & Karte', completed: false }
+            ]}
+        ];
+
+        function App() {
+            const [categories, setCategories] = useState(() => {
+                const saved = localStorage.getItem('hurricane_2026_list');
+                return saved ? JSON.parse(saved) : INITIAL_DATA;
+            });
+            const [activeCat, setActiveCat] = useState(() => {
+                const saved = localStorage.getItem('hurricane_2026_active');
+                const initial = JSON.parse(localStorage.getItem('hurricane_2026_list') || 'null') || INITIAL_DATA;
+                return saved && initial.some(c => c.id === saved) ? saved : initial[0]?.id;
+            });
+            const [newItem, setNewItem] = useState('');
+            const [showModal, setShowModal] = useState(false);
+            const [newCatTitle, setNewCatTitle] = useState('');
+
+            useEffect(() => {
+                localStorage.setItem('hurricane_2026_list', JSON.stringify(categories));
+            }, [categories]);
+
+            useEffect(() => {
+                if (activeCat) localStorage.setItem('hurricane_2026_active', activeCat);
+            }, [activeCat]);
+
+            const stats = useMemo(() => {
+                let t = 0, c = 0;
+                categories.forEach(cat => cat.items.forEach(i => { t++; if(i.completed) c++; }));
+                return { total: t, done: c, p: t === 0 ? 0 : Math.round((c/t)*100) };
+            }, [categories]);
+
+            const toggle = (catId, itemId) => {
+                setCategories(prev => prev.map(cat => cat.id === catId ? {
+                    ...cat, items: cat.items.map(i => i.id === itemId ? {...i, completed: !i.completed} : i)
+                } : cat));
+            };
+
+            const add = () => {
+                if(!newItem.trim()) return;
+                setCategories(prev => prev.map(cat => cat.id === activeCat ? {
+                    ...cat, items: [...cat.items, { id: Date.now().toString(), text: newItem.trim(), completed: false }]
+                } : cat));
+                setNewItem('');
+            };
+
+            const del = (catId, itemId) => {
+                setCategories(prev => prev.map(cat => cat.id === catId ? {
+                    ...cat, items: cat.items.filter(i => i.id !== itemId)
+                } : cat));
+            };
+
+            const delCat = (catId) => {
+                if (!confirm('Kategorie komplett löschen?')) return;
+                setCategories(prev => {
+                    const next = prev.filter(c => c.id !== catId);
+                    if (activeCat === catId && next.length) setActiveCat(next[0].id);
+                    return next;
+                });
+            };
+
+            const copy = async () => {
+                const text = categories.map(c => `${c.title}:\n` + c.items.map(i => `${i.completed ? '✓' : '○'} ${i.text}`).join('\n')).join('\n\n');
+                try {
+                    if (navigator.share) {
+                        await navigator.share({ title: 'Hurricane 2026 Packliste', text });
+                        return;
+                    }
+                    if (navigator.clipboard) {
+                        await navigator.clipboard.writeText(text);
+                    } else {
+                        const el = document.createElement('textarea'); el.value = text; document.body.appendChild(el); el.select();
+                        document.execCommand('copy'); document.body.removeChild(el);
+                    }
+                    alert('Liste in die Zwischenablage kopiert!');
+                } catch(e) { /* user cancelled share */ }
+            };
+
+            const current = categories.find(c => c.id === activeCat);
+
+            return (
+                <div className="max-w-md mx-auto min-h-screen flex flex-col">
+                    <header className="bg-white px-6 pt-8 pb-4 sticky top-0 z-30 shadow-sm border-b border-slate-100">
+                        <div className="flex justify-between items-center mb-4">
+                            <div>
+                                <h1 className="text-2xl font-extrabold tracking-tight">Hurricane '26</h1>
+                                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em]">Pack-Manager</p>
+                            </div>
+                            <div className="flex gap-2">
+                                <button onClick={copy} aria-label="Teilen" className="p-2.5 bg-slate-50 rounded-full active:scale-90 transition-transform"><Icon name="share" className="w-5 h-5 text-slate-600"/></button>
+                                <button onClick={() => { if(confirm('Liste komplett zurücksetzen?')) setCategories(INITIAL_DATA); }} aria-label="Zurücksetzen" className="p-2.5 bg-slate-50 rounded-full active:scale-90 transition-transform"><Icon name="refresh" className="w-5 h-5 text-slate-600"/></button>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <div className="flex-1 bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                                <div className="bg-blue-600 h-full transition-all duration-500" style={{width: `${stats.p}%`}}></div>
+                            </div>
+                            <span className="font-bold text-blue-600 text-sm tabular-nums">{stats.done}/{stats.total}</span>
+                        </div>
+                    </header>
+
+                    <nav className="flex overflow-x-auto no-scrollbar gap-2 px-6 py-4 bg-white border-b border-slate-50 sticky top-[133px] z-20">
+                        {categories.map(c => {
+                            const catDone = c.items.filter(i => i.completed).length;
+                            const catTotal = c.items.length;
+                            return (
+                                <button key={c.id} onClick={() => setActiveCat(c.id)}
+                                    className={`px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-2 ${activeCat === c.id ? 'bg-slate-900 text-white shadow-lg' : 'bg-white border border-slate-200 text-slate-500'}`}>
+                                    <Icon name={c.icon} className="w-4 h-4" /> {c.title}
+                                    <span className={`text-[10px] ${activeCat === c.id ? 'text-slate-300' : 'text-slate-400'}`}>{catDone}/{catTotal}</span>
+                                </button>
+                            );
+                        })}
+                    </nav>
+
+                    <main className="flex-1 px-6 pt-4 pb-32">
+                        {current && (
+                            <div className="flex items-center justify-between mb-2">
+                                <h2 className="text-lg font-extrabold text-slate-800 flex items-center gap-2">
+                                    <Icon name={current.icon} className="w-5 h-5"/> {current.title}
+                                </h2>
+                                {!INITIAL_DATA.some(c => c.id === current.id) && (
+                                    <button onClick={() => delCat(current.id)} className="text-xs text-slate-400 font-bold">Kategorie löschen</button>
+                                )}
+                            </div>
+                        )}
+                        {current?.items.length === 0 && (
+                            <p className="text-center text-slate-400 text-sm py-8">Noch nichts in dieser Kategorie.</p>
+                        )}
+                        {current?.items.map(item => (
+                            <div key={item.id} className="flex items-center gap-4 py-4 border-b border-slate-100 last:border-0 active:bg-slate-50 transition-colors">
+                                <button onClick={() => toggle(activeCat, item.id)} aria-label="Erledigt umschalten" className={`transition-transform active:scale-75 ${item.completed ? 'text-green-500' : 'text-slate-200'}`}>
+                                    <Icon name={item.completed ? 'check' : 'circle'} className="w-7 h-7" />
+                                </button>
+                                <span onClick={() => toggle(activeCat, item.id)} className={`flex-1 text-base font-medium cursor-pointer select-none ${item.completed ? 'text-slate-300 line-through' : 'text-slate-700'}`}>
+                                    {item.text}
+                                </span>
+                                <button onClick={() => del(activeCat, item.id)} aria-label="Löschen" className="text-slate-300 hover:text-red-500 active:scale-90 transition-all p-1"><Icon name="trash" className="w-4 h-4"/></button>
+                            </div>
+                        ))}
+                        <div className="mt-4 flex gap-2">
+                            <input value={newItem} onChange={e => setNewItem(e.target.value)} onKeyDown={e => e.key === 'Enter' && add()}
+                                placeholder="Was fehlt noch?" className="flex-1 bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-500/20" />
+                            <button onClick={add} aria-label="Hinzufügen" className="bg-slate-900 text-white px-5 rounded-2xl font-bold active:scale-90 transition-transform"><Icon name="plus"/></button>
+                        </div>
+                    </main>
+
+                    <div className="fixed bottom-6 left-0 right-0 px-6 z-40 pointer-events-none">
+                        <button onClick={() => setShowModal(true)}
+                            className="w-full max-w-md mx-auto bg-blue-600 text-white py-4 rounded-3xl font-extrabold shadow-2xl shadow-blue-200 flex items-center justify-center gap-2 pointer-events-auto active:scale-95 transition-transform">
+                            <Icon name="plus" className="w-6 h-6" /> NEUE KATEGORIE
+                        </button>
+                    </div>
+
+                    {showModal && (
+                        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4" onClick={() => setShowModal(false)}>
+                            <div className="bg-white w-full max-w-sm rounded-[40px] p-8 animate-slide-up" onClick={e => e.stopPropagation()}>
+                                <h3 className="text-xl font-extrabold mb-2 text-center">Neue Kategorie</h3>
+                                <input autoFocus value={newCatTitle} onChange={e => setNewCatTitle(e.target.value)}
+                                    onKeyDown={e => {
+                                        if (e.key === 'Enter' && newCatTitle.trim()) {
+                                            const nid = Date.now().toString();
+                                            setCategories([...categories, {id: nid, title: newCatTitle.trim(), icon: 'sparkles', items: []}]);
+                                            setActiveCat(nid); setNewCatTitle(''); setShowModal(false);
+                                        }
+                                    }}
+                                    placeholder="z.B. Technik, Kostüme..." className="w-full bg-slate-50 rounded-2xl px-4 py-4 mb-6 border-0 outline-none focus:ring-2 focus:ring-blue-500" />
+                                <div className="flex gap-3">
+                                    <button onClick={() => { setShowModal(false); setNewCatTitle(''); }} className="flex-1 py-4 text-slate-400 font-bold">Abbrechen</button>
+                                    <button onClick={() => {
+                                        if(!newCatTitle.trim()) return;
+                                        const nid = Date.now().toString();
+                                        setCategories([...categories, {id: nid, title: newCatTitle.trim(), icon: 'sparkles', items: []}]);
+                                        setActiveCat(nid); setNewCatTitle(''); setShowModal(false);
+                                    }} className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-extrabold shadow-lg shadow-blue-100">Erstellen</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').catch(() => {});
+            });
+        }
+    </script>
+</body>
+</html>
