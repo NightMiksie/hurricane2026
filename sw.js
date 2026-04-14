@@ -1,4 +1,4 @@
-const CACHE = 'hurricane-2026-v3';
+const CACHE = 'hurricane-2026-v4';
 const ASSETS = [
   './',
   './index.html',
@@ -37,6 +37,9 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
+
+  const url = new URL(req.url);
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/.netlify/')) return;
 
   event.respondWith(
     caches.match(req).then((cached) => {

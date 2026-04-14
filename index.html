@@ -62,7 +62,11 @@
                 pencil: <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3Z" />,
                 share: <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13" />,
                 refresh: <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16M3 21v-5h5" />,
-                undo: <path d="M3 7v6h6M3 13a9 9 0 1 0 3-7.7L3 8" />
+                undo: <path d="M3 7v6h6M3 13a9 9 0 1 0 3-7.7L3 8" />,
+                cloud: <path d="M17.5 19H9a5 5 0 0 1-.58-9.967A7 7 0 1 1 19 13.9a4.5 4.5 0 0 1-1.5 5.1Z" />,
+                cloudOff: <path d="M17.5 19H9a5 5 0 0 1-.58-9.967 7 7 0 0 1 1.57-3.083M10.49 4.49A7 7 0 0 1 19 13.9M2 2l20 20" />,
+                copy: <><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></>,
+                x: <path d="M18 6 6 18M6 6l12 12" />
             };
             return (
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -122,6 +126,124 @@
 
         const sortForDisplay = (items) => [...items].sort((a, b) => Number(a.completed) - Number(b.completed));
 
+        const SYNC_ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789';
+        const genSyncCode = () => {
+            const buf = new Uint32Array(10);
+            crypto.getRandomValues(buf);
+            let s = '';
+            for (const n of buf) s += SYNC_ALPHABET[n % SYNC_ALPHABET.length];
+            return s;
+        };
+        const isValidSyncCode = (c) => /^[a-z0-9-]{6,40}$/.test(c);
+        const fmtRelative = (ts) => {
+            if (!ts) return '';
+            const diff = Math.max(0, Date.now() - ts);
+            if (diff < 5000) return 'gerade eben';
+            if (diff < 60_000) return `vor ${Math.floor(diff/1000)} s`;
+            if (diff < 3_600_000) return `vor ${Math.floor(diff/60_000)} min`;
+            return `vor ${Math.floor(diff/3_600_000)} h`;
+        };
+
+        function SyncModal({ syncId, syncStatus, lastSyncedAt, onConnect, onDisconnect, onClose, onPullNow }) {
+            const [codeInput, setCodeInput] = useState('');
+            const [err, setErr] = useState('');
+            const [copied, setCopied] = useState(false);
+            const [tick, setTick] = useState(0);
+
+            useEffect(() => {
+                const t = setInterval(() => setTick(x => x + 1), 5000);
+                return () => clearInterval(t);
+            }, []);
+
+            const doGenerate = () => {
+                onConnect(genSyncCode());
+            };
+            const doLink = () => {
+                const c = codeInput.trim().toLowerCase();
+                if (!isValidSyncCode(c)) {
+                    setErr('Code braucht 6–40 Zeichen (Buchstaben/Zahlen).');
+                    return;
+                }
+                setErr('');
+                onConnect(c);
+            };
+            const doCopy = async () => {
+                try {
+                    await navigator.clipboard.writeText(syncId);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 1500);
+                } catch {}
+            };
+
+            return (
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4" onClick={onClose}>
+                    <div className="bg-white w-full max-w-sm rounded-[40px] p-8 animate-slide-up" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-xl font-extrabold">Geräte-Sync</h3>
+                            <button onClick={onClose} aria-label="Schließen" className="p-1 text-slate-400 hover:text-slate-700"><Icon name="x" className="w-5 h-5"/></button>
+                        </div>
+
+                        {!syncId ? (
+                            <>
+                                <p className="text-sm text-slate-500 mb-5">
+                                    Verbinde Handy &amp; Rechner über einen Sync-Code. Beide Geräte sehen die selbe Liste, Änderungen synchronisieren sich automatisch.
+                                </p>
+                                <button onClick={doGenerate}
+                                    className="w-full py-4 bg-blue-600 text-white rounded-2xl font-extrabold shadow-lg shadow-blue-100 active:scale-95 transition-transform mb-3">
+                                    Neuen Sync-Code erstellen
+                                </button>
+                                <div className="flex items-center gap-3 my-5">
+                                    <div className="flex-1 h-px bg-slate-100"></div>
+                                    <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">oder</span>
+                                    <div className="flex-1 h-px bg-slate-100"></div>
+                                </div>
+                                <label className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-2 block">Code vom anderen Gerät eingeben</label>
+                                <div className="flex gap-2">
+                                    <input autoFocus value={codeInput} onChange={e => setCodeInput(e.target.value)}
+                                        onKeyDown={e => e.key === 'Enter' && doLink()}
+                                        autoComplete="off" autoCapitalize="off" spellCheck={false}
+                                        placeholder="z.B. k7m3p9qrxn" className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500/20 font-mono" />
+                                    <button onClick={doLink} className="bg-slate-900 text-white px-5 rounded-2xl font-bold active:scale-90 transition-transform">Verbinden</button>
+                                </div>
+                                {err && <p className="text-xs text-red-500 mt-2">{err}</p>}
+                            </>
+                        ) : (
+                            <>
+                                <p className="text-sm text-slate-500 mb-4">Dein Sync-Code — auf jedem anderen Gerät eingeben, um dieselbe Liste zu sehen:</p>
+                                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 mb-3 flex items-center justify-between gap-3">
+                                    <code className="font-mono text-lg font-bold tracking-wider text-slate-800 break-all">{syncId}</code>
+                                    <button onClick={doCopy} aria-label="Code kopieren" className="shrink-0 p-2 text-slate-500 hover:text-slate-900 active:scale-90 transition-all">
+                                        <Icon name="copy" className="w-5 h-5"/>
+                                    </button>
+                                </div>
+                                {copied && <p className="text-xs text-green-600 font-bold text-center -mt-1 mb-2">Kopiert!</p>}
+                                <div className="flex items-center gap-2 text-xs mb-5">
+                                    <span className={`w-2 h-2 rounded-full ${
+                                        syncStatus === 'syncing' ? 'bg-blue-500 animate-pulse'
+                                            : syncStatus === 'error' ? 'bg-red-500'
+                                            : syncStatus === 'synced' ? 'bg-green-500'
+                                            : 'bg-slate-300'
+                                    }`}></span>
+                                    <span className="text-slate-500">
+                                        {syncStatus === 'syncing' ? 'Synchronisiere…'
+                                            : syncStatus === 'error' ? 'Fehler — offline?'
+                                            : syncStatus === 'synced' ? (lastSyncedAt ? `Synchron, ${fmtRelative(lastSyncedAt)}` : 'Synchron')
+                                            : 'Bereit'}
+                                    </span>
+                                </div>
+                                <button onClick={onPullNow} className="w-full py-3 bg-slate-50 text-slate-700 rounded-2xl font-bold mb-2 active:scale-95 transition-transform">Jetzt abrufen</button>
+                                <button onClick={() => { if (confirm('Gerät trennen? Lokale Daten bleiben erhalten, werden aber nicht mehr synchronisiert.')) { onDisconnect(); onClose(); } }}
+                                    className="w-full py-3 text-red-500 font-bold">Dieses Gerät trennen</button>
+                            </>
+                        )}
+                        <p className="text-[11px] text-slate-400 mt-4 leading-relaxed">
+                            Hinweis: Wer den Code kennt, kann die Liste lesen &amp; ändern. Teile ihn nur mit Personen, denen du vertraust.
+                        </p>
+                    </div>
+                </div>
+            );
+        }
+
         function App() {
             const [categories, setCategories] = useState(() => {
                 const saved = localStorage.getItem('hurricane_2026_list');
@@ -135,13 +257,32 @@
             const [newItem, setNewItem] = useState('');
             const [showCatModal, setShowCatModal] = useState(false);
             const [showResetModal, setShowResetModal] = useState(false);
+            const [showSyncModal, setShowSyncModal] = useState(false);
             const [newCatTitle, setNewCatTitle] = useState('');
             const [editing, setEditing] = useState(null); // {catId, itemId}
             const [editText, setEditText] = useState('');
             const [undoState, setUndoState] = useState(null); // {catId, item, index, key}
 
+            // sync state
+            const [syncId, setSyncId] = useState(() => localStorage.getItem('hurricane_2026_sync_id') || '');
+            const [updatedAt, setUpdatedAt] = useState(() => parseInt(localStorage.getItem('hurricane_2026_updated') || '0'));
+            const [syncStatus, setSyncStatus] = useState('idle'); // idle|syncing|synced|error
+            const [lastSyncedAt, setLastSyncedAt] = useState(0);
+            const skipTimestamp = useRef(false);
+            const skipNextPush = useRef(false);
+            const didMount = useRef(false);
+
             useEffect(() => {
                 localStorage.setItem('hurricane_2026_list', JSON.stringify(categories));
+                if (skipTimestamp.current) {
+                    skipTimestamp.current = false;
+                } else if (didMount.current) {
+                    const now = Date.now();
+                    setUpdatedAt(now);
+                    localStorage.setItem('hurricane_2026_updated', String(now));
+                } else {
+                    didMount.current = true;
+                }
             }, [categories]);
 
             useEffect(() => {
@@ -153,6 +294,86 @@
                 const t = setTimeout(() => setUndoState(null), 5000);
                 return () => clearTimeout(t);
             }, [undoState?.key]);
+
+            // --- Sync logic ---
+            const pushRemote = async (nextUpdatedAt = updatedAt, cats = categories) => {
+                if (!syncId) return { ok: false };
+                setSyncStatus('syncing');
+                try {
+                    const res = await fetch(`/api/sync?id=${encodeURIComponent(syncId)}`, {
+                        method: 'PUT',
+                        headers: { 'content-type': 'application/json' },
+                        body: JSON.stringify({ categories: cats, updatedAt: nextUpdatedAt, version: 1 })
+                    });
+                    if (!res.ok) throw new Error('http ' + res.status);
+                    setSyncStatus('synced');
+                    setLastSyncedAt(Date.now());
+                    return { ok: true };
+                } catch (e) {
+                    setSyncStatus('error');
+                    return { ok: false, error: e };
+                }
+            };
+
+            const pullRemote = async () => {
+                if (!syncId) return { ok: false };
+                setSyncStatus('syncing');
+                try {
+                    const res = await fetch(`/api/sync?id=${encodeURIComponent(syncId)}`);
+                    if (!res.ok) throw new Error('http ' + res.status);
+                    const remote = await res.json();
+                    if (remote && typeof remote.updatedAt === 'number' && remote.updatedAt > updatedAt) {
+                        skipTimestamp.current = true;
+                        skipNextPush.current = true;
+                        setCategories(remote.categories);
+                        setUpdatedAt(remote.updatedAt);
+                        localStorage.setItem('hurricane_2026_updated', String(remote.updatedAt));
+                    } else if (!remote && updatedAt > 0) {
+                        await pushRemote(updatedAt, categories);
+                    }
+                    setSyncStatus('synced');
+                    setLastSyncedAt(Date.now());
+                    return { ok: true, remote };
+                } catch (e) {
+                    setSyncStatus('error');
+                    return { ok: false, error: e };
+                }
+            };
+
+            // On syncId change: pull
+            useEffect(() => {
+                if (!syncId) { setSyncStatus('idle'); return; }
+                pullRemote();
+            }, [syncId]);
+
+            // On updatedAt change: debounced push
+            useEffect(() => {
+                if (!syncId || !updatedAt) return;
+                if (skipNextPush.current) { skipNextPush.current = false; return; }
+                const t = setTimeout(() => pushRemote(updatedAt, categories), 800);
+                return () => clearTimeout(t);
+            }, [updatedAt, syncId]);
+
+            // On window focus: pull (catch changes from other device)
+            useEffect(() => {
+                if (!syncId) return;
+                const onFocus = () => pullRemote();
+                window.addEventListener('focus', onFocus);
+                return () => window.removeEventListener('focus', onFocus);
+            }, [syncId]);
+
+            const connectSync = (code) => {
+                const c = code.trim().toLowerCase();
+                if (!isValidSyncCode(c)) return false;
+                localStorage.setItem('hurricane_2026_sync_id', c);
+                setSyncId(c);
+                return true;
+            };
+            const disconnectSync = () => {
+                localStorage.removeItem('hurricane_2026_sync_id');
+                setSyncId('');
+                setSyncStatus('idle');
+            };
 
             const stats = useMemo(() => {
                 let t = 0, c = 0;
@@ -337,6 +558,15 @@
                                 <button onClick={() => setShowCatModal(true)} className="hidden lg:flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-2xl font-extrabold shadow-lg shadow-blue-100 active:scale-95 transition-transform">
                                     <Icon name="plus" className="w-4 h-4" /> Kategorie
                                 </button>
+                                <button onClick={() => setShowSyncModal(true)} aria-label="Sync"
+                                    className={`p-2.5 bg-slate-50 rounded-full active:scale-90 transition-transform relative ${syncStatus === 'syncing' ? 'animate-pulse' : ''}`}>
+                                    <Icon name={syncId ? 'cloud' : 'cloudOff'} className={`w-5 h-5 ${
+                                        !syncId ? 'text-slate-600'
+                                            : syncStatus === 'error' ? 'text-red-500'
+                                            : syncStatus === 'syncing' ? 'text-blue-500'
+                                            : 'text-green-500'
+                                    }`}/>
+                                </button>
                                 <button onClick={copy} aria-label="Teilen" className="p-2.5 bg-slate-50 rounded-full active:scale-90 transition-transform"><Icon name="share" className="w-5 h-5 text-slate-600"/></button>
                                 <button onClick={() => setShowResetModal(true)} aria-label="Zurücksetzen" className="p-2.5 bg-slate-50 rounded-full active:scale-90 transition-transform"><Icon name="refresh" className="w-5 h-5 text-slate-600"/></button>
                             </div>
@@ -445,6 +675,19 @@
                                 </div>
                             </div>
                         </div>
+                    )}
+
+                    {/* Sync modal */}
+                    {showSyncModal && (
+                        <SyncModal
+                            syncId={syncId}
+                            syncStatus={syncStatus}
+                            lastSyncedAt={lastSyncedAt}
+                            onConnect={connectSync}
+                            onDisconnect={disconnectSync}
+                            onClose={() => setShowSyncModal(false)}
+                            onPullNow={pullRemote}
+                        />
                     )}
 
                     {/* Reset modal */}
