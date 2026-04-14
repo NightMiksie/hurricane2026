@@ -19,11 +19,22 @@ export default async (req) => {
         return json({ error: 'invalid id' }, { status: 400 });
     }
 
-    const store = getStore(STORE);
+    let store;
+    try {
+        store = getStore({ name: STORE, consistency: 'strong' });
+    } catch (e) {
+        return json({ error: 'store init failed', msg: String(e?.message || e) }, { status: 500 });
+    }
 
     if (req.method === 'GET') {
-        const data = await store.get(id, { type: 'json' });
-        return json(data ?? null);
+        try {
+            const raw = await store.get(id);
+            if (raw == null) return json(null);
+            try { return json(JSON.parse(raw)); }
+            catch { return json({ error: 'stored value not json', raw }, { status: 500 }); }
+        } catch (e) {
+            return json({ error: 'get failed', msg: String(e?.message || e) }, { status: 500 });
+        }
     }
 
     if (req.method === 'PUT') {
@@ -40,8 +51,13 @@ export default async (req) => {
             || typeof parsed.updatedAt !== 'number') {
             return json({ error: 'invalid shape' }, { status: 400 });
         }
-        await store.setJSON(id, parsed);
-        return json({ ok: true, updatedAt: parsed.updatedAt });
+        try {
+            await store.set(id, JSON.stringify(parsed));
+            const verify = await store.get(id);
+            return json({ ok: true, updatedAt: parsed.updatedAt, verifyLen: verify?.length ?? null });
+        } catch (e) {
+            return json({ error: 'set failed', msg: String(e?.message || e) }, { status: 500 });
+        }
     }
 
     return json({ error: 'method not allowed' }, { status: 405 });
