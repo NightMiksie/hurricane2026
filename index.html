@@ -180,15 +180,67 @@
 
             const current = categories.find(c => c.id === activeCat);
 
+            const CategoryCard = ({ cat, perCatInput = false }) => {
+                const [localInput, setLocalInput] = useState('');
+                const catDone = cat.items.filter(i => i.completed).length;
+                const addHere = () => {
+                    const text = (perCatInput ? localInput : newItem).trim();
+                    if (!text) return;
+                    setCategories(prev => prev.map(c => c.id === cat.id ? {
+                        ...c, items: [...c.items, { id: Date.now().toString(), text, completed: false }]
+                    } : c));
+                    perCatInput ? setLocalInput('') : setNewItem('');
+                };
+                return (
+                    <section className="bg-white rounded-3xl border border-slate-100 p-5 shadow-sm flex flex-col">
+                        <div className="flex items-center justify-between mb-3">
+                            <h2 className="text-lg font-extrabold text-slate-800 flex items-center gap-2">
+                                <Icon name={cat.icon} className="w-5 h-5"/> {cat.title}
+                                <span className="text-xs font-bold text-slate-400 tabular-nums">{catDone}/{cat.items.length}</span>
+                            </h2>
+                            {!INITIAL_DATA.some(c => c.id === cat.id) && (
+                                <button onClick={() => delCat(cat.id)} className="text-xs text-slate-400 hover:text-red-500 font-bold">Löschen</button>
+                            )}
+                        </div>
+                        {cat.items.length === 0 && (
+                            <p className="text-center text-slate-400 text-sm py-6">Noch nichts hier.</p>
+                        )}
+                        <div className="flex-1">
+                            {cat.items.map(item => (
+                                <div key={item.id} className="flex items-center gap-3 py-3 border-b border-slate-100 last:border-0 group">
+                                    <button onClick={() => toggle(cat.id, item.id)} aria-label="Erledigt umschalten" className={`transition-transform active:scale-75 ${item.completed ? 'text-green-500' : 'text-slate-200'}`}>
+                                        <Icon name={item.completed ? 'check' : 'circle'} className="w-6 h-6" />
+                                    </button>
+                                    <span onClick={() => toggle(cat.id, item.id)} className={`flex-1 text-base font-medium cursor-pointer select-none ${item.completed ? 'text-slate-300 line-through' : 'text-slate-700'}`}>
+                                        {item.text}
+                                    </span>
+                                    <button onClick={() => del(cat.id, item.id)} aria-label="Löschen" className="text-slate-300 hover:text-red-500 active:scale-90 transition-all p-1 lg:opacity-0 lg:group-hover:opacity-100"><Icon name="trash" className="w-4 h-4"/></button>
+                                </div>
+                            ))}
+                        </div>
+                        {perCatInput && (
+                            <div className="mt-4 flex gap-2">
+                                <input value={localInput} onChange={e => setLocalInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && addHere()}
+                                    placeholder="Was fehlt noch?" className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20" />
+                                <button onClick={addHere} aria-label="Hinzufügen" className="bg-slate-900 text-white px-4 rounded-2xl font-bold active:scale-90 transition-transform"><Icon name="plus" className="w-4 h-4"/></button>
+                            </div>
+                        )}
+                    </section>
+                );
+            };
+
             return (
-                <div className="max-w-md mx-auto min-h-screen flex flex-col">
-                    <header className="bg-white px-6 pt-8 pb-4 sticky top-0 z-30 shadow-sm border-b border-slate-100">
-                        <div className="flex justify-between items-center mb-4">
+                <div className="max-w-md lg:max-w-7xl mx-auto min-h-screen flex flex-col">
+                    <header className="bg-white px-6 lg:px-10 pt-8 pb-4 sticky top-0 z-30 shadow-sm border-b border-slate-100">
+                        <div className="flex justify-between items-center mb-4 gap-4">
                             <div>
-                                <h1 className="text-2xl font-extrabold tracking-tight">Hurricane '26</h1>
+                                <h1 className="text-2xl lg:text-3xl font-extrabold tracking-tight">Hurricane '26</h1>
                                 <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em]">Pack-Manager</p>
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 items-center">
+                                <button onClick={() => setShowModal(true)} className="hidden lg:flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-2xl font-extrabold shadow-lg shadow-blue-100 active:scale-95 transition-transform">
+                                    <Icon name="plus" className="w-4 h-4" /> Kategorie
+                                </button>
                                 <button onClick={copy} aria-label="Teilen" className="p-2.5 bg-slate-50 rounded-full active:scale-90 transition-transform"><Icon name="share" className="w-5 h-5 text-slate-600"/></button>
                                 <button onClick={() => { if(confirm('Liste komplett zurücksetzen?')) setCategories(INITIAL_DATA); }} aria-label="Zurücksetzen" className="p-2.5 bg-slate-50 rounded-full active:scale-90 transition-transform"><Icon name="refresh" className="w-5 h-5 text-slate-600"/></button>
                             </div>
@@ -201,7 +253,8 @@
                         </div>
                     </header>
 
-                    <nav className="flex overflow-x-auto no-scrollbar gap-2 px-6 py-4 bg-white border-b border-slate-50 sticky top-[133px] z-20">
+                    {/* Mobile tab nav */}
+                    <nav className="lg:hidden flex overflow-x-auto no-scrollbar gap-2 px-6 py-4 bg-white border-b border-slate-50 sticky top-[133px] z-20">
                         {categories.map(c => {
                             const catDone = c.items.filter(i => i.completed).length;
                             const catTotal = c.items.length;
@@ -215,7 +268,8 @@
                         })}
                     </nav>
 
-                    <main className="flex-1 px-6 pt-4 pb-32">
+                    {/* Mobile: single active category */}
+                    <main className="lg:hidden flex-1 px-6 pt-4 pb-32">
                         {current && (
                             <div className="flex items-center justify-between mb-2">
                                 <h2 className="text-lg font-extrabold text-slate-800 flex items-center gap-2">
@@ -247,7 +301,15 @@
                         </div>
                     </main>
 
-                    <div className="fixed bottom-6 left-0 right-0 px-6 z-40 pointer-events-none">
+                    {/* Desktop: grid of all categories */}
+                    <main className="hidden lg:grid flex-1 px-10 py-8 gap-6 grid-cols-2 xl:grid-cols-3 auto-rows-min">
+                        {categories.map(cat => (
+                            <CategoryCard key={cat.id} cat={cat} perCatInput={true} />
+                        ))}
+                    </main>
+
+                    {/* Mobile floating add-category button */}
+                    <div className="lg:hidden fixed bottom-6 left-0 right-0 px-6 z-40 pointer-events-none">
                         <button onClick={() => setShowModal(true)}
                             className="w-full max-w-md mx-auto bg-blue-600 text-white py-4 rounded-3xl font-extrabold shadow-2xl shadow-blue-200 flex items-center justify-center gap-2 pointer-events-auto active:scale-95 transition-transform">
                             <Icon name="plus" className="w-6 h-6" /> NEUE KATEGORIE
